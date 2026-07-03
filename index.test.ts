@@ -1,41 +1,38 @@
 import {describe, it, vi, expect} from 'vitest'
+import { AuthService } from './index.ts'
 
 describe("auth", () => {
-    it("test 1", () => {
-        // vi.fn() -> crea un mock de una funcion, es decir una funcion que no hace nada pero podemos espiar si fue llamada o no
-        const myFunction = vi.fn()
+    it("deberia retornar el usuario si existe", async () => {
 
-        // mockReturnValue -> simula el valor de retorno de una funcion mockeada
-        myFunction.mockReturnValue("andres")
+        const repository = {
+            // el nombre de la funcion debe ser igual al de la clase AuthRepository
+            findUserByEmail: vi.fn()
+        }
 
-        // llamar a la funcion mockeada
-        myFunction()
-
-        // toHaveBeenCalled -> valida que una funcion haya sido llamada
-        expect(myFunction).toHaveBeenCalled()
-
-        // toHaveBeenCalledTimes -> valida que una funcion haya sido llamada un numero de veces
-        expect(myFunction).toHaveBeenCalledTimes(1)
-    })
-
-    // necesita que la funcion sea async porque se trabajara con promesas
-    it("test 2", async () => {
-        const buscarUsuario = vi.fn()
-
-        // mockResolvedValue -> simula el valor de retorno de una funcion mockeada que retorna una promesa
-        buscarUsuario.mockResolvedValue({
-            nombre: "andres",
-            id: 1
+        repository.findUserByEmail.mockResolvedValue({
+            id: 1,
+            email: "andres@gmail.com"
         })
 
-        const resultado = await buscarUsuario()
-        expect(resultado).toEqual({ nombre: "andres", id: 1 })
+        const service = new AuthService(repository as any)
+
+        const result = await service.login("andres@gmail.com")
+
+        expect(result.email).toBe("andres@gmail.com")
     })
 
-    it("test 3", async () => {
-        const buscarUsuario = vi.fn()
+    it("deberia lanzar un error si el usuario no existe", async () => {
 
-        // mockRejectedValue -> simula el valor de retorno de una funcion mockeada que retorna una promesa rechazada
-        buscarUsuario.mockRejectedValue(new Error("usuario no encontrado"))
+        const repository = {
+            // el nombre de la funcion debe ser igual al de la clase AuthRepository
+            findUserByEmail: vi.fn()
+        }
+
+        repository.findUserByEmail.mockResolvedValue(null)
+
+        const service = new AuthService(repository as any)
+
+        // .rejects.toThrow -> valida que una promesa lance un error
+        await expect(service.login("andres@gmail.com")).rejects.toThrow("usuario no encontrado")
     })
 })
