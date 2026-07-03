@@ -1,48 +1,41 @@
-import {describe, beforeAll, beforeEach, afterEach, afterAll, it, expect} from 'vitest'
+import {describe, it, vi, expect} from 'vitest'
 
 describe("auth", () => {
-    // pueden haber describers anidados
-    describe("login",() => {
-        beforeAll(() => {
-            console.log("se ejecuta antes del test, solo una vez")
-        })
+    it("test 1", () => {
+        // vi.fn() -> crea un mock de una funcion, es decir una funcion que no hace nada pero podemos espiar si fue llamada o no
+        const myFunction = vi.fn()
 
-        beforeEach(() => {
-            console.log("se ejecuta antes de cada test")
-        })
+        // mockReturnValue -> simula el valor de retorno de una funcion mockeada
+        myFunction.mockReturnValue("andres")
 
-        afterEach(() => {
-            console.log("se ejecuta despues de cada test")
-        })
+        // llamar a la funcion mockeada
+        myFunction()
 
-        afterAll(() => {
-            console.log("se ejecuta despues del test, solo una vez")
-        })
+        // toHaveBeenCalled -> valida que una funcion haya sido llamada
+        expect(myFunction).toHaveBeenCalled()
 
-        it("test 1", () => {
-            console.log("test 1")
-        })
-
-        it("test 2", () => {
-            console.log("test 2")
-        })
+        // toHaveBeenCalledTimes -> valida que una funcion haya sido llamada un numero de veces
+        expect(myFunction).toHaveBeenCalledTimes(1)
     })
 
-    describe("register",() => {
-        expect(1+1).toBe(2)
+    // necesita que la funcion sea async porque se trabajara con promesas
+    it("test 2", async () => {
+        const buscarUsuario = vi.fn()
 
-        // usar toEqual en vez de toBe porque toBe compara la referencias y en objetos nunca seran iguales en cambio toEqual compara solo el valor
-        expect({nombre:"andres"}).toEqual({nombre:"andres"})
+        // mockResolvedValue -> simula el valor de retorno de una funcion mockeada que retorna una promesa
+        buscarUsuario.mockResolvedValue({
+            nombre: "andres",
+            id: 1
+        })
 
-        // toBeTruthy -> valida que el valor sea truthy
-        expect(true).toBeTruthy()
+        const resultado = await buscarUsuario()
+        expect(resultado).toEqual({ nombre: "andres", id: 1 })
+    })
 
-        // toBeFalsy -> valida que el valor sea falsy
-        expect(false).toBeFalsy()
+    it("test 3", async () => {
+        const buscarUsuario = vi.fn()
 
-        // toThrow -> valida que una funcion lance un error
-        expect(() => {
-            throw new Error("error")
-        }).toThrow()
+        // mockRejectedValue -> simula el valor de retorno de una funcion mockeada que retorna una promesa rechazada
+        buscarUsuario.mockRejectedValue(new Error("usuario no encontrado"))
     })
 })
