@@ -1,7 +1,7 @@
 import bcrypt from 'bcrypt'
 import { usuarios } from './users'
 import jwt from 'jsonwebtoken'
-import type { NextFunction, Request, Response } from 'express'
+import type { Request, Response } from 'express'
 
 export class AuthRepository {
     async findUserByEmail(email: string) {
@@ -44,26 +44,4 @@ export class AuthController {
 
         return res.status(200).json({message:"se inicio sesion", result})
     }
-}
-
-interface PayloadJWT {
-    id:number
-}
-
-export function AuthToken(req: Request, res: Response, next: NextFunction) {
-  const token = req.headers.authorization;
-
-  if (!token) {
-    return res.status(401).json({ message: "token requerido" });
-  }
-
-  try {
-    const verifyToken = jwt.verify(token, "hola") as PayloadJWT;
-
-    req.user = verifyToken;
-
-    next();
-  } catch {
-    return res.status(401).json({ message: "token no valido" });
-  }
 }

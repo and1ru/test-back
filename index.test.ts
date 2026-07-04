@@ -1,40 +1,85 @@
-import { describe, it, vi, expect } from "vitest";
-import { AuthController, AuthService } from ".";
+import { describe, it, vi, expect, type Mock } from "vitest";
 import type { Request, Response } from "express";
+import  jwt  from "jsonwebtoken";
+import { AuthToken } from ".";
+
+vi.mock("jsonwebtoken", () => ({
+  default:{
+    verify: vi.fn()
+  }
+}))
 
 describe("login", () => {
+  it("deberia retornar un 401 y decir que el token es requerido", () => {
 
-  it("deberia devolver 200 y el token", async () => {
-
-    const authService = {
-      login: vi.fn()
+    const req:Pick<Request, "headers"> = {
+      headers:{}
     }
 
-    authService.login.mockResolvedValue("TOKEN")
-
-    // se debe mockear el req con los datos que vienen en el body
-    const req:Pick<Request, "body"> = {
-      body: {
-        email: "andres@gmail.com",
-        password: "123456789",
-      },
-    };
-
-    // se debe mockear el res con los datos que restornara
     const res:Pick<Response, "status" | "json"> = {
-      // mockReturnThis() -> hace que la función devuelva el objeto al que pertenece en este caso el res
       status: vi.fn().mockReturnThis(),
-      json: vi.fn(),
-    };
+      json: vi.fn()
+    }
 
-    const controller = new AuthController(authService as any)
+    const next = vi.fn()
 
+    AuthToken(req as Request, res as Response, next)
 
-    await controller.login(req as Request, res as Response)
+    expect(res.status).toHaveBeenCalledWith(401)
+    expect(res.json).toHaveBeenCalledWith({message:"token requerido"})
+    expect(next).not.toHaveBeenCalled();
 
-    expect(authService.login).toHaveBeenCalledWith("andres@gmail.com", "123456789")
-    expect(res.status).toHaveBeenCalledWith(200)
-    expect(res.json).toHaveBeenCalledWith({message: "se inicio sesion",result: "TOKEN"})
-  });
+  })
+
+  it("deberia retornar un 401 y decir que el token no es valido", () => {
+
+    // mockImplementation -> dice: "Cuando alguien llame esta función, ejecuta este código."
+    (jwt.verify as Mock).mockImplementation(() => {
+      throw new Error("token no valido")
+    });
+
+    const req:Pick<Request, "headers"> = {
+      headers:{
+        authorization: "TOKEN"
+      }
+    }
+
+    const res:Pick<Response, "status" | "json"> = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn()
+    }
+
+    const next = vi.fn()
+
+    AuthToken(req as Request, res as Response, next)
+
+    expect(res.status).toHaveBeenCalledWith(401)
+    expect(res.json).toHaveBeenCalledWith({message:"token no valido"})
+    expect(next).not.toHaveBeenCalled();
+
+  })
+
+  it("deberia llegar a la funcion next y que todo salga bien", () => {
+    (jwt.verify as Mock).mockReturnValue({id:1});
+
+    const req = {
+      headers:{
+        authorization: "TOKEN"
+      }
+    } as Request
+
+    const res:Pick<Response, "status" | "json"> = {
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn()
+    }
+
+    const next = vi.fn()
+
+    AuthToken(req as Request, res as Response, next)
+
+    expect(next).toHaveBeenCalled()
+    // verifica que si se haya guardado en la req
+    expect(req.user).toEqual({id:1})
+  })
 
 });
