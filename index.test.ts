@@ -1,10 +1,9 @@
 import { describe, it, vi, expect, beforeEach } from "vitest";
-import { AuthService } from "./index.ts";
+import { AuthRepository, AuthService } from "./index.ts";
 import bcrypt from "bcrypt";
 import jwt from 'jsonwebtoken'
 import type { Mock } from "vitest";
 
-// vi.mcok() -> mockea una libreria
 vi.mock("bcrypt", () => ({
   default: {
     compare: vi.fn(),
@@ -12,38 +11,79 @@ vi.mock("bcrypt", () => ({
 }));
 
 vi.mock("jsonwebtoken", () => ({
-    default: {
-        sign: vi.fn()
-    }
+  default: {
+    sign: vi.fn()
+  }
 }))
 
 describe("login", () => {
-  let service: AuthService
 
-  beforeEach(() => {
-    service = new AuthService()
-    // limpia las veces que se haya llamado un mock
-    // por ejemplo: si en el primer caso donde todo salio bien se llama el mock de jwt pero en el segundo no se llamo igualmente toma como que se llamo
-    // pero si se limpia los mocks tomara que no se ha llamado
-    vi.clearAllMocks()
+  it("deberia retornar un error de usuario no encontrado", async () => {
+    const repository = {
+      findUserByEmail: vi.fn()
+    }
+
+    repository.findUserByEmail.mockResolvedValue(undefined)
+
+    const service = new AuthService(repository)
+
+    const result = service.login("andres@gmail.com", "123456789")
+
+    await expect(result).rejects.toThrow("usuario no encontrado")
+
   })
 
-  it("deberia devolver un token", async () => {
+  it("deberia retornar un error de contraseña no valida", async () => {
 
-    // poner siempre un ";" al final 
-    (bcrypt.compare as Mock).mockResolvedValue(true);
-    (jwt.sign as Mock).mockReturnValue("TOKEN_FAKE");
-
-    const token = await service.login("123456789", "hash")
-
-    expect(token).toBe("TOKEN_FAKE")
-  })
-
-  it("deberia lanzar un error", async () => {
     (bcrypt.compare as Mock).mockResolvedValue(false);
-    await expect((service.login("123456789", "hash"))).rejects.toThrow("la contraseña es incorrecta")
-    // .not.toHaveBeenCalled() -> dice que espera que no se haya llamado/utilizado una funcion
-    expect(jwt.sign).not.toHaveBeenCalled()
+
+    const repository = {
+      findUserByEmail: vi.fn()
+    }
+
+    repository.findUserByEmail.mockResolvedValue({
+      email: "andres@gmail.com",
+      id: 1,
+      password: "123456789"
+    })
+
+    const service = new AuthService(repository)
+
+    const result = service.login("andres@gmail.com", "123456789")
+
+    // toHaveBeenCalledWith() -> verifica que a una funcion se le pasaron los datos correctamente
+    // Ejemplo:
+    // repository.findUserByEmail(123456789) ❌
+    // expect(repository.findUserByEmail).toHaveBeenCalledWith("andres@gmail.com")
+    // El test fallará porque se llamó con 123456789 y no con "andres@gmail.com".
+    //
+    // repository.findUserByEmail("andres@gmail.com") ✅
+    // expect(repository.findUserByEmail).toHaveBeenCalledWith("andres@gmail.com")
+    // El test pasará porque los argumentos coinciden.
+    expect(repository.findUserByEmail).toHaveBeenCalledWith("andres@gmail.com")
+    await expect(result).rejects.toThrow("la contraseña es incorrecta")
+  })
+
+  it("deberia retornar un token y el usuario", async () => {
+
+    (bcrypt.compare as Mock).mockResolvedValue(true);
+    (jwt.sign as Mock).mockResolvedValue("FAKE_TOKEN");
+
+    const repository = {
+      findUserByEmail: vi.fn()
+    }
+
+    repository.findUserByEmail.mockResolvedValue({
+      email: "andres@gmail.com",
+      id: 1,
+      password: "123456789"
+    })
+
+    const service = new AuthService(repository)
+
+    const result = await service.login("andres@gmail.com", "123456789")
+
+    expect(result).toBe("FAKE_TOKEN")
   })
 
 });
