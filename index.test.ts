@@ -1,85 +1,35 @@
-import { describe, it, vi, expect, type Mock } from "vitest";
-import type { Request, Response } from "express";
-import  jwt  from "jsonwebtoken";
-import { AuthToken } from ".";
-
-vi.mock("jsonwebtoken", () => ({
-  default:{
-    verify: vi.fn()
-  }
-}))
+import { describe, it, vi, expect, type Mock, beforeEach } from "vitest";
+import { pool } from "./myDb";
+import { AuthRepository } from ".";
 
 describe("login", () => {
-  it("deberia retornar un 401 y decir que el token es requerido", () => {
+  // cuando se trabaja con base de datos reales siempre se debe eliminar todos los datos de la tabla en la que se va a trabajar
+  beforeEach(async () => {
+    await pool.query("DELETE FROM usuarios")
+  })
 
-    const req:Pick<Request, "headers"> = {
-      headers:{}
-    }
+  it("deberia mostrar un array basio porque no existe un usuario con el email", async () => {
 
-    const res:Pick<Response, "status" | "json"> = {
-      status: vi.fn().mockReturnThis(),
-      json: vi.fn()
-    }
+    // insertarmos un nuevo usuario
+    await pool.query("INSERT INTO usuarios(email,password) VALUES (?,?)", ["andres@gmail.com", "hash"])
 
-    const next = vi.fn()
+    const repository = new AuthRepository()
 
-    AuthToken(req as Request, res as Response, next)
+    const user = await repository.findUserByEmail("andres@gmail.com")
 
-    expect(res.status).toHaveBeenCalledWith(401)
-    expect(res.json).toHaveBeenCalledWith({message:"token requerido"})
-    expect(next).not.toHaveBeenCalled();
+    expect(user.email).toBe("andres@gmail.com")
 
   })
 
-  it("deberia retornar un 401 y decir que el token no es valido", () => {
+  it("deberia mostrar todos los datos del usuario con el email", async () => {
+    // insertarmos un nuevo usuario
+    await pool.query("INSERT INTO usuarios(email,password) VALUES (?,?)", ["andres@gmail.com", "hash"])
 
-    // mockImplementation -> dice: "Cuando alguien llame esta función, ejecuta este código."
-    (jwt.verify as Mock).mockImplementation(() => {
-      throw new Error("token no valido")
-    });
+    const repository = new AuthRepository()
 
-    const req:Pick<Request, "headers"> = {
-      headers:{
-        authorization: "TOKEN"
-      }
-    }
+    const user = await repository.findUserByEmail("usuario@gmail.com")
 
-    const res:Pick<Response, "status" | "json"> = {
-      status: vi.fn().mockReturnThis(),
-      json: vi.fn()
-    }
-
-    const next = vi.fn()
-
-    AuthToken(req as Request, res as Response, next)
-
-    expect(res.status).toHaveBeenCalledWith(401)
-    expect(res.json).toHaveBeenCalledWith({message:"token no valido"})
-    expect(next).not.toHaveBeenCalled();
-
+    // toBeNull -> dice que espera que el resultado sea un null
+    expect(user).toBeNull()
   })
-
-  it("deberia llegar a la funcion next y que todo salga bien", () => {
-    (jwt.verify as Mock).mockReturnValue({id:1});
-
-    const req = {
-      headers:{
-        authorization: "TOKEN"
-      }
-    } as Request
-
-    const res:Pick<Response, "status" | "json"> = {
-      status: vi.fn().mockReturnThis(),
-      json: vi.fn()
-    }
-
-    const next = vi.fn()
-
-    AuthToken(req as Request, res as Response, next)
-
-    expect(next).toHaveBeenCalled()
-    // verifica que si se haya guardado en la req
-    expect(req.user).toEqual({id:1})
-  })
-
 });
