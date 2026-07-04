@@ -1,89 +1,40 @@
-import { describe, it, vi, expect, beforeEach } from "vitest";
-import { AuthRepository, AuthService } from "./index.ts";
-import bcrypt from "bcrypt";
-import jwt from 'jsonwebtoken'
-import type { Mock } from "vitest";
-
-vi.mock("bcrypt", () => ({
-  default: {
-    compare: vi.fn(),
-  },
-}));
-
-vi.mock("jsonwebtoken", () => ({
-  default: {
-    sign: vi.fn()
-  }
-}))
+import { describe, it, vi, expect } from "vitest";
+import { AuthController, AuthService } from ".";
+import type { Request, Response } from "express";
 
 describe("login", () => {
 
-  it("deberia retornar un error de usuario no encontrado", async () => {
-    const repository = {
-      findUserByEmail: vi.fn()
+  it("deberia devolver 200 y el token", async () => {
+
+    const authService = {
+      login: vi.fn()
     }
 
-    repository.findUserByEmail.mockResolvedValue(undefined)
+    authService.login.mockResolvedValue("TOKEN")
 
-    const service = new AuthService(repository)
+    // se debe mockear el req con los datos que vienen en el body
+    const req:Pick<Request, "body"> = {
+      body: {
+        email: "andres@gmail.com",
+        password: "123456789",
+      },
+    };
 
-    const result = service.login("andres@gmail.com", "123456789")
+    // se debe mockear el res con los datos que restornara
+    const res:Pick<Response, "status" | "json"> = {
+      // mockReturnThis() -> hace que la función devuelva el objeto al que pertenece en este caso el res
+      status: vi.fn().mockReturnThis(),
+      json: vi.fn(),
+    };
 
-    await expect(result).rejects.toThrow("usuario no encontrado")
+    const controller = new AuthController(authService as any)
 
-  })
 
-  it("deberia retornar un error de contraseña no valida", async () => {
+    await controller.login(req as Request, res as Response)
 
-    (bcrypt.compare as Mock).mockResolvedValue(false);
-
-    const repository = {
-      findUserByEmail: vi.fn()
-    }
-
-    repository.findUserByEmail.mockResolvedValue({
-      email: "andres@gmail.com",
-      id: 1,
-      password: "123456789"
-    })
-
-    const service = new AuthService(repository)
-
-    const result = service.login("andres@gmail.com", "123456789")
-
-    // toHaveBeenCalledWith() -> verifica que a una funcion se le pasaron los datos correctamente
-    // Ejemplo:
-    // repository.findUserByEmail(123456789) ❌
-    // expect(repository.findUserByEmail).toHaveBeenCalledWith("andres@gmail.com")
-    // El test fallará porque se llamó con 123456789 y no con "andres@gmail.com".
-    //
-    // repository.findUserByEmail("andres@gmail.com") ✅
-    // expect(repository.findUserByEmail).toHaveBeenCalledWith("andres@gmail.com")
-    // El test pasará porque los argumentos coinciden.
-    expect(repository.findUserByEmail).toHaveBeenCalledWith("andres@gmail.com")
-    await expect(result).rejects.toThrow("la contraseña es incorrecta")
-  })
-
-  it("deberia retornar un token y el usuario", async () => {
-
-    (bcrypt.compare as Mock).mockResolvedValue(true);
-    (jwt.sign as Mock).mockResolvedValue("FAKE_TOKEN");
-
-    const repository = {
-      findUserByEmail: vi.fn()
-    }
-
-    repository.findUserByEmail.mockResolvedValue({
-      email: "andres@gmail.com",
-      id: 1,
-      password: "123456789"
-    })
-
-    const service = new AuthService(repository)
-
-    const result = await service.login("andres@gmail.com", "123456789")
-
-    expect(result).toBe("FAKE_TOKEN")
-  })
+    expect(authService.login).toHaveBeenCalledWith("andres@gmail.com", "123456789")
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(res.json).toHaveBeenCalledWith({message: "se inicio sesion",result: "TOKEN"})
+  });
 
 });

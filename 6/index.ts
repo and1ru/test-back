@@ -1,7 +1,6 @@
 import bcrypt from 'bcrypt'
 import { usuarios } from './users'
 import jwt from 'jsonwebtoken'
-import type { Request, Response } from 'express'
 
 export class AuthRepository {
     async findUserByEmail(email: string) {
@@ -32,16 +31,4 @@ export class AuthService {
         return token
     }
 
-}
-
-export class AuthController {
-    constructor(private authService:AuthService){}
-
-    async login (req:Request, res:Response){
-        const {email, password} = req.body
-
-        const result = await this.authService.login(email, password)
-
-        return res.status(200).json({message:"se inicio sesion", result})
-    }
 }
