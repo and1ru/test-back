@@ -1,18 +1,14 @@
-import { pool } from "./myDb.ts";
+import express from 'express'
+import authRoute from './login.ts'
 
-export class AuthRepository {
-    async findUserByEmail(email: string) {
-        // esta consulta retorna un array
-        // si no encuentra el usuario retorna un undefined por defecto
-        const [rows] = await pool.query("SELECT * FROM  usuarios WHERE email = ?",[email])
-        // obtiene el primer objeto del array
-        // si no encuentra nada dice que retorne un null
-        return rows[0] ?? null
-    }
-}
+const app = express()
 
-const repository = new AuthRepository()
+app.use(express.json())
 
-const result = await repository.findUserByEmail("pedritomelo@gmail.com")
+app.use("/auth", authRoute)
 
-console.log(result)
+export default app
+
+app.listen(3000, () => {
+    console.log("se esta escuchando en el puerto 3000")
+})

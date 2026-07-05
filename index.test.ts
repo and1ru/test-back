@@ -1,35 +1,38 @@
-import { describe, it, vi, expect, type Mock, beforeEach } from "vitest";
-import { pool } from "./myDb";
-import { AuthRepository } from ".";
+import request from 'supertest'
+import app from '.'
+import { describe, it, expect } from 'vitest'
 
-describe("login", () => {
-  // cuando se trabaja con base de datos reales siempre se debe eliminar todos los datos de la tabla en la que se va a trabajar
-  beforeEach(async () => {
-    await pool.query("DELETE FROM usuarios")
+// a diferencia de un test unitario donde no se usa la base de datos real
+// en un test de integracion si usa la base de datos real
+
+// en un test de integracion verificas el resultado
+describe("POST / login", () => {
+  it("deberia de iniciar sesion correctamente", async () => {
+    // no se llama al controller 
+    // se hace una peticion real a la ruta donde esta el controller
+    // se le pasan los datos que necesita para que trabaje correctamente
+    const response = await request(app).post("/auth/login").send({email:"andres@gmail.com", password: "hash"})
+
+    expect(response.status).toBe(200)
+    expect(response.body.message).toBe("se obtuvo el usuario")
+    // no incluye el id porque puede cambiar
+    expect(response.body.result).toMatchObject({email:"andres@gmail.com", password:"hash"})
   })
 
-  it("deberia mostrar un array basio porque no existe un usuario con el email", async () => {
+  it("deberia de retornar un status 400 y un mensaje de error diciendo 'los campos son requeridos'", async () => {
+    const response = await request(app).post("/auth/login").send({email:"", password: ""})
 
-    // insertarmos un nuevo usuario
-    await pool.query("INSERT INTO usuarios(email,password) VALUES (?,?)", ["andres@gmail.com", "hash"])
+    expect(response.status).toBe(400)
+    expect(response.body.message).toBe("los campos son requeridos")
 
-    const repository = new AuthRepository()
+  }) 
 
-    const user = await repository.findUserByEmail("andres@gmail.com")
+  it("deberia de retornar un status 500 y un mensaje de error diciendo 'error interno del servidor'", async () => {
+    // aqui lanzara el error ya sea porque la contraseña no coincide o porque no encuentra a un usuario con el email
+    const response = await request(app).post("/auth/login").send({email:"usuario@gmail.com", password: ""})
 
-    expect(user.email).toBe("andres@gmail.com")
-
+    expect(response.status).toBe(400)
+    expect(response.body.message).toBe("los campos son requeridos")
   })
 
-  it("deberia mostrar todos los datos del usuario con el email", async () => {
-    // insertarmos un nuevo usuario
-    await pool.query("INSERT INTO usuarios(email,password) VALUES (?,?)", ["andres@gmail.com", "hash"])
-
-    const repository = new AuthRepository()
-
-    const user = await repository.findUserByEmail("usuario@gmail.com")
-
-    // toBeNull -> dice que espera que el resultado sea un null
-    expect(user).toBeNull()
-  })
-});
+})
